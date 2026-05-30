@@ -1,0 +1,343 @@
+import 'package:flutter/material.dart';
+import '../main.dart';
+import '../models/desk.model.dart' as models;
+
+class TecnicoPage extends StatefulWidget {
+  final models.Tecnico tecnico;
+
+  const TecnicoPage({
+    super.key,
+    required this.tecnico,
+  });
+
+  @override
+  State<TecnicoPage> createState() => _TecnicoPageState();
+}
+
+class _TecnicoPageState extends State<TecnicoPage> {
+  List<models.Ticket> _tickets = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarTickets();
+  }
+
+  Future<void> _cargarTickets() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final tickets = await appDatabase.getTicketsByTecnico(widget.tecnico.id);
+
+      setState(() {
+        _tickets = tickets;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error cargando tickets del técnico: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _editarComentario(models.Ticket ticket) async {
+  final controller = TextEditingController(
+    text: ticket.comentario.Contenido,
+  );
+
+  final resultado = await showDialog<bool>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text('Editar comentario del ticket #${ticket.id}'),
+        content: TextField(
+          controller: controller,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            labelText: 'Comentario',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Guardar'),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (resultado != true) return;
+
+  try {
+    final contenidoNuevo = controller.text.trim();
+
+    if (contenidoNuevo.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El comentario no puede estar vacío'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    print('Ticket id: ${ticket.id}');
+    print('Comentario id actual: ${ticket.comentario.id}');
+    print('Contenido nuevo: $contenidoNuevo');
+
+    if (ticket.comentario.id == 0) {
+      final comentarioInsertado = await appDatabase.insertComentario(
+        models.Comentario(
+          id: 0,
+          Contenido: contenidoNuevo,
+          pendingSync: true,
+        ),
+        ticketId: ticket.id,
+      );
+
+      print('Comentario insertado con id: ${comentarioInsertado.id}');
+    } else {
+      await appDatabase.updateComentario(
+        models.Comentario(
+          id: ticket.comentario.id,
+          Contenido: contenidoNuevo,
+          pendingSync: true,
+        ),
+        ticketId: ticket.id,
+      );
+
+      print('Comentario actualizado con id: ${ticket.comentario.id}');
+    }
+
+    await _cargarTickets();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Comentario actualizado correctamente'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  } catch (e) {
+    print('Error al guardar comentario: $e');
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error al guardar comentario: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+}
+
+  Color _prioridadColor(String prioridad) {
+    switch (prioridad.toLowerCase()) {
+      case 'alta':
+        return Colors.red;
+      case 'media':
+        return Colors.orange;
+      case 'baja':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _estadoColor(String estado) {
+    switch (estado.toLowerCase()) {
+      case 'abierto':
+        return Colors.blue;
+      case 'cerrado':
+        return Colors.green;
+      case 'pendiente':
+        return Colors.orange;
+      case 'en progreso':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _formatFecha(DateTime fecha) {
+    return '${fecha.day}/${fecha.month}/${fecha.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6FB),
+      appBar: AppBar(
+        title: Text(
+          'Tickets de ${widget.tecnico.Nombre}',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: const Color(0xFF5C6BC0),
+        centerTitle: true,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _tickets.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.engineering, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'No tienes tickets asignados',
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _cargarTickets,
+                  child: ListView.builder(
+                    itemCount: _tickets.length,
+                    itemBuilder: (context, index) {
+                      final ticket = _tickets[index];
+
+                      return Card(
+                        elevation: 2,
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '#${ticket.id}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _estadoColor(ticket.Estado)
+                                          .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      ticket.Estado,
+                                      style: TextStyle(
+                                        color: _estadoColor(ticket.Estado),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _prioridadColor(ticket.Prioridad)
+                                          .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      ticket.Prioridad,
+                                      style: TextStyle(
+                                        color: _prioridadColor(ticket.Prioridad),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Serial: ${ticket.SerialEquipo}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text('Categoría: ${ticket.categoria.Nombre}'),
+                              const SizedBox(height: 4),
+                              Text('Usuario: ${ticket.usuario.Nombre}'),
+                              const SizedBox(height: 4),
+                              Text('Fecha: ${_formatFecha(ticket.FechaCreacion)}'),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'Comentario',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF4F6FB),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.grey.shade300),
+                                ),
+                                child: Text(
+                                  ticket.comentario.Contenido.isNotEmpty
+                                      ? ticket.comentario.Contenido
+                                      : 'Sin comentario',
+                                  style: TextStyle(
+                                    color: ticket.comentario.Contenido.isNotEmpty
+                                        ? Colors.black87
+                                        : Colors.grey,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _editarComentario(ticket),
+                                  icon: const Icon(Icons.edit_note),
+                                  label: const Text('Editar comentario'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+    );
+  }
+}
