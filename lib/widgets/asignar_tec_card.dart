@@ -217,7 +217,7 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
                         style: TextStyle(color: Colors.grey),
                       )
                     : DropdownButtonFormField<models.Tecnico>(
-                        value: _tecnicoSeleccionado,
+                        initialValue: _tecnicoSeleccionado,
                         decoration: const InputDecoration(
                           labelText: 'Asignar técnico',
                           prefixIcon: Icon(Icons.engineering),

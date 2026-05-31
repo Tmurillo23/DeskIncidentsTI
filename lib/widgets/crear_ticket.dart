@@ -158,7 +158,7 @@ class _CrearTicketDialogState extends State<CrearTicketDialog> {
 
           // ── Categoría ──
           DropdownButtonFormField<String>(
-            value: _categoriaSeleccionada,
+            initialValue: _categoriaSeleccionada,
             decoration: const InputDecoration(
               labelText: 'Categoría',
               prefixIcon: Icon(Icons.category_outlined),
