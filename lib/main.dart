@@ -1,47 +1,38 @@
 import 'package:desk_sla_app/data/app_database.dart';
-import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
+
 import 'firebase_options.dart';
 import 'pages/login.pages.dart';
 
-// ✅ instancia global única de la base de datos
-final appDatabase = AppDatabase();
+/// Instancia global única de la base de datos local.
+final AppDatabase appDatabase = AppDatabase();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+
+  runApp(const DeskIncidentsApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class DeskIncidentsApp extends StatelessWidget {
+  const DeskIncidentsApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Desk SLA App',
+      title: 'DeskIncidentsTI',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF5C6BC0),
+        ),
+        useMaterial3: true,
       ),
       home: const LoginPage(),
-    );
-  }
-}
-
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Desk SLA App'),
-      ),
-      body: const Center(
-        child: Text('Bienvenido — Firebase inicializado correctamente.'),
-      ),
     );
   }
 }

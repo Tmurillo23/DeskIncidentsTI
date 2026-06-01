@@ -1,10 +1,16 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
+import '../data/app_database.dart';
+import '../models/desk.model.dart' as models;
+import '../services/auth_service.dart';
+import '../services/ticket_remote_service.dart';
+import '../services/ticket_repository.dart';
 import 'admin.pages.dart';
 import 'tecnico.pages.dart';
 import 'usuario.pages.dart';
-import '../main.dart'; // ✅ usa appDatabase global
-import '../models/desk.model.dart' as models;
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -14,6 +20,15 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final AppDatabase _db = AppDatabase();
+  final _authService = FirebaseAuthService();
+  final _remoteService = TicketRemoteService();
+  late final TicketRepository _repository = TicketRepository(
+    db: _db,
+    remoteService: _remoteService,
+    authService: _authService,
+  );
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -31,145 +46,185 @@ class _LoginPageState extends State<LoginPage> {
     _passwordController.dispose();
     _nombreController.dispose();
     _documentoController.dispose();
+    unawaited(_db.close());
     super.dispose();
   }
 
+  String _normalizeRole(String role) {
+    final normalized = role.trim().toLowerCase();
+    if (normalized == 'usuario') return 'solicitante';
+    if (normalized == 'admin') return 'administrador';
+    return normalized;
+  }
+
+  models.Usuario _buildUsuarioProfile({
+    required String email,
+    required String nombre,
+    required int documento,
+    required String role,
+  }) {
+    return models.Usuario(
+      id: 0,
+      Nombre: nombre,
+      DocumentoIdentidad: documento,
+      Correo: email.trim().toLowerCase(),
+      Rol: _normalizeRole(role),
+      pendingSync: true,
+    );
+  }
+
+  models.Tecnico _buildTecnicoProfile({
+    required String email,
+    required String nombre,
+    required int documento,
+    required String password,
+  }) {
+    return models.Tecnico(
+      id: 0,
+      Nombre: nombre,
+      DocumentoIdentidad: documento,
+      Correo: email.trim().toLowerCase(),
+      Password: password,
+      pendingSync: true,
+    );
+  }
+
   Future<void> _submit() async {
-  final isValid = _formKey.currentState?.validate() ?? false;
-  if (!isValid) return;
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid) return;
 
-  setState(() {
-    _isLoading = true;
-    _errorMessage = null;
-  });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-  try {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
 
-    if (_isRegisterMode) {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      final usuarios = await appDatabase.getAllUsuarios();
-      final yaExisteEnLocal = usuarios.any((u) => u.Correo == email);
-
-      if (!yaExisteEnLocal) {
-        await appDatabase.insertUsuario(
-          models.Usuario(
-            id: 0,
-            Nombre: _nombreController.text.trim(),
-            DocumentoIdentidad: int.tryParse(_documentoController.text) ?? 0,
-            Correo: email,
-            Rol: _rolSeleccionado,
-            pendingSync: true,
-          ),
+      if (_isRegisterMode) {
+        await _authService.registerWithEmailAndPassword(
+          email: email,
+          password: password,
         );
-      }
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cuenta creada correctamente. Ahora inicia sesión.'),
-          backgroundColor: Colors.green,
-        ),
-      );
+        final nombre = _nombreController.text.trim();
+        final documento = int.tryParse(_documentoController.text.trim()) ?? 0;
 
-      setState(() {
-        _isRegisterMode = false;
-        _nombreController.clear();
-        _documentoController.clear();
-        _emailController.clear();
-        _passwordController.clear();
-        _rolSeleccionado = 'usuario';
-      });
-    } else {
-      if (_rolSeleccionado == 'tecnico') {
-        final tecnicos = await appDatabase.getAllTecnicos();
-
-        final encontrados = tecnicos.where(
-          (t) => t.Correo == email && t.Password == password,
-        ).toList();
-
-        if (encontrados.isEmpty) {
-          throw Exception('Correo o contraseña de técnico incorrectos');
-        }
-
-        final tecnicoLogueado = encontrados.first;
-
-        if (!mounted) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => TecnicoPage(tecnico: tecnicoLogueado),
-          ),
-        );
-        return;
-      }
-
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      final usuarios = await appDatabase.getAllUsuarios();
-      models.Usuario usuarioLogueado;
-
-      final encontrados = usuarios.where((u) => u.Correo == email).toList();
-
-      if (encontrados.isNotEmpty) {
-        usuarioLogueado = encontrados.first;
-      } else {
-        usuarioLogueado = await appDatabase.insertUsuario(
-          models.Usuario(
-            id: 0,
-            Nombre: email.split('@').first,
-            DocumentoIdentidad: 0,
-            Correo: email,
-            Rol: _rolSeleccionado,
-            pendingSync: true,
-          ),
-        );
-      }
-
-      if (!mounted) return;
-
-      switch (_rolSeleccionado) {
-        case 'admin':
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AdminPage()),
-          );
-          break;
-        case 'usuario':
-        default:
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => UsuarioPage(usuario: usuarioLogueado),
+        if (_rolSeleccionado == 'tecnico') {
+          await _repository.saveTecnico(
+            _buildTecnicoProfile(
+              email: email,
+              nombre: nombre,
+              documento: documento,
+              password: password,
             ),
           );
-          break;
+        } else {
+          await _repository.saveUsuario(
+            _buildUsuarioProfile(
+              email: email,
+              nombre: nombre,
+              documento: documento,
+              role: _rolSeleccionado,
+            ),
+          );
+        }
+
+        await _authService.logout();
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cuenta creada correctamente. Ahora inicia sesión.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        setState(() {
+          _isRegisterMode = false;
+          _nombreController.clear();
+          _documentoController.clear();
+          _emailController.clear();
+          _passwordController.clear();
+          _rolSeleccionado = 'usuario';
+        });
+      } else {
+        await _authService.loginWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+
+        if (_rolSeleccionado == 'tecnico') {
+          var tecnico = await _repository.findTechnicianByEmail(email);
+
+          if (tecnico == null) {
+            throw Exception('No existe un perfil de técnico asociado a este correo');
+          }
+
+          tecnico = tecnico.copyWith(
+            Correo: email,
+          );
+
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => TecnicoPage(tecnico: tecnico!),
+            ),
+          );
+          return;
+        }
+
+        models.Usuario? usuarioLogueado = await _repository.findUserByEmail(email);
+
+        usuarioLogueado ??= await _repository.saveUsuario(
+            _buildUsuarioProfile(
+              email: email,
+              nombre: email.split('@').first,
+              documento: 0,
+              role: _rolSeleccionado,
+            ),
+          );
+
+        final rolReal = _normalizeRole(usuarioLogueado.Rol);
+
+        if (!mounted) return;
+
+        switch (rolReal) {
+          case 'administrador':
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminPage()),
+            );
+            break;
+          case 'solicitante':
+          default:
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => UsuarioPage(usuario: usuarioLogueado!),
+              ),
+            );
+            break;
+        }
+      }
+    } on FirebaseAuthException catch (error) {
+      setState(() {
+        _errorMessage = _mapFirebaseAuthError(error);
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
-  } on FirebaseAuthException catch (error) {
-    setState(() {
-      _errorMessage = _mapFirebaseAuthError(error);
-    });
-  } catch (e) {
-    setState(() {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
-    });
-  } finally {
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-    }
   }
-}
 
   String _mapFirebaseAuthError(FirebaseAuthException error) {
     switch (error.code) {
@@ -242,9 +297,10 @@ class _LoginPageState extends State<LoginPage> {
                 icon: const Icon(Icons.admin_panel_settings),
                 label: const Text('Admin'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: _rolSeleccionado == 'admin' && !_isRegisterMode
-                      ? const Color.fromARGB(255, 41, 132, 224)
-                      : null,
+                  foregroundColor:
+                      _rolSeleccionado == 'admin' && !_isRegisterMode
+                          ? const Color.fromARGB(255, 41, 132, 224)
+                          : null,
                   side: BorderSide(
                     color: _rolSeleccionado == 'admin' && !_isRegisterMode
                         ? const Color.fromARGB(255, 41, 132, 224)
@@ -269,9 +325,10 @@ class _LoginPageState extends State<LoginPage> {
                 icon: const Icon(Icons.engineering),
                 label: const Text('Técnico'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: _rolSeleccionado == 'tecnico' && !_isRegisterMode
-                      ? const Color.fromARGB(255, 41, 132, 224)
-                      : null,
+                  foregroundColor:
+                      _rolSeleccionado == 'tecnico' && !_isRegisterMode
+                          ? const Color.fromARGB(255, 41, 132, 224)
+                          : null,
                   side: BorderSide(
                     color: _rolSeleccionado == 'tecnico' && !_isRegisterMode
                         ? const Color.fromARGB(255, 41, 132, 224)
@@ -296,9 +353,10 @@ class _LoginPageState extends State<LoginPage> {
                 icon: const Icon(Icons.person),
                 label: const Text('Usuario'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: _rolSeleccionado == 'usuario' && !_isRegisterMode
-                      ? const Color.fromARGB(255, 41, 132, 224)
-                      : null,
+                  foregroundColor:
+                      _rolSeleccionado == 'usuario' && !_isRegisterMode
+                          ? const Color.fromARGB(255, 41, 132, 224)
+                          : null,
                   side: BorderSide(
                     color: _rolSeleccionado == 'usuario' && !_isRegisterMode
                         ? const Color.fromARGB(255, 58, 108, 208)

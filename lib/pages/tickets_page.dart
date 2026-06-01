@@ -1,7 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import '../main.dart';
+
+import '../data/app_database.dart';
 import '../models/desk.model.dart' as models;
-import '../widgets/asignar_tec_card.dart'; // ✅ usa AsignarTecCard
+import '../services/auth_service.dart';
+import '../services/ticket_remote_service.dart';
+import '../services/ticket_repository.dart';
+import '../widgets/asignar_tec_card.dart';
 
 class TicketsPage extends StatefulWidget {
   const TicketsPage({super.key});
@@ -11,9 +17,19 @@ class TicketsPage extends StatefulWidget {
 }
 
 class _TicketsPageState extends State<TicketsPage> {
+  final AppDatabase _db = AppDatabase();
+  final _authService = FirebaseAuthService();
+  final _remoteService = TicketRemoteService();
+  late final TicketRepository _repository = TicketRepository(
+    db: _db,
+    remoteService: _remoteService,
+    authService: _authService,
+  );
+
   List<models.Ticket> _tickets = [];
   bool _isLoading = true;
   String _filtroEstado = 'Todos';
+  models.Usuario? _actor;
 
   @override
   void initState() {
@@ -21,22 +37,46 @@ class _TicketsPageState extends State<TicketsPage> {
     _cargarDatos();
   }
 
+  @override
+  void dispose() {
+    unawaited(_db.close());
+    super.dispose();
+  }
+
   Future<void> _cargarDatos() async {
     setState(() => _isLoading = true);
     try {
-      final tickets = await appDatabase.getAllTickets();
+      final tickets = await _repository.getAllTickets();
+      final actor = await _repository.getLoggedUserProfile();
       setState(() {
         _tickets = tickets;
+        _actor = actor;
         _isLoading = false;
       });
     } catch (e) {
-      print('ERROR: $e');
       setState(() => _isLoading = false);
     }
   }
 
   List<models.Ticket> get _ticketsFiltrados {
     if (_filtroEstado == 'Todos') return _tickets;
+
+    if (_filtroEstado == 'Abierto') {
+      return _tickets.where((t) {
+        final status = t.Estado.toLowerCase();
+        return status == 'pendiente' ||
+            status == 'asignado' ||
+            status == 'en proceso';
+      }).toList();
+    }
+
+    if (_filtroEstado == 'En progreso') {
+      return _tickets.where((t) {
+        final status = t.Estado.toLowerCase();
+        return status == 'asignado' || status == 'en proceso';
+      }).toList();
+    }
+
     return _tickets.where((t) => t.Estado == _filtroEstado).toList();
   }
 
@@ -55,8 +95,6 @@ class _TicketsPageState extends State<TicketsPage> {
       ),
       body: Column(
         children: [
-
-          // ── Filtros por estado ──
           Container(
             color: const Color(0xFF5C6BC0),
             child: SingleChildScrollView(
@@ -89,8 +127,6 @@ class _TicketsPageState extends State<TicketsPage> {
               ),
             ),
           ),
-
-          // ── Contador ──
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Row(
@@ -102,8 +138,6 @@ class _TicketsPageState extends State<TicketsPage> {
               ],
             ),
           ),
-
-          // ── Lista ──
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -112,8 +146,11 @@ class _TicketsPageState extends State<TicketsPage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.confirmation_number_outlined,
-                                size: 64, color: Colors.grey),
+                            Icon(
+                              Icons.confirmation_number_outlined,
+                              size: 64,
+                              color: Colors.grey,
+                            ),
                             SizedBox(height: 16),
                             Text(
                               'No hay tickets',
@@ -128,10 +165,10 @@ class _TicketsPageState extends State<TicketsPage> {
                           itemCount: _ticketsFiltrados.length,
                           itemBuilder: (context, index) {
                             final ticket = _ticketsFiltrados[index];
-                            // ✅ usa AsignarTecCard
                             return AsignarTecCard(
                               ticket: ticket,
                               onAsignado: _cargarDatos,
+                              actor: _actor,
                             );
                           },
                         ),

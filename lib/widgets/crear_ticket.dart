@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+
+import '../data/app_database.dart';
 import '../models/desk.model.dart' as models;
-import '../main.dart'; // ✅ para usar appDatabase
+import '../services/auth_service.dart';
+import '../services/ticket_remote_service.dart';
+import '../services/ticket_repository.dart';
 
 // Categorías con su prioridad por defecto
 const Map<String, String> _categoriasPrioridad = {
@@ -14,7 +18,7 @@ const Map<String, String> _categoriasPrioridad = {
 };
 
 class CrearTicketDialog extends StatefulWidget {
-  final models.Usuario usuario; // ✅ usuario que crea el ticket
+  final models.Usuario usuario;
 
   const CrearTicketDialog({
     super.key,
@@ -26,6 +30,13 @@ class CrearTicketDialog extends StatefulWidget {
 }
 
 class _CrearTicketDialogState extends State<CrearTicketDialog> {
+  final AppDatabase _db = AppDatabase();
+  late final TicketRepository _repository = TicketRepository(
+    db: _db,
+    remoteService: TicketRemoteService(),
+    authService: FirebaseAuthService(),
+  );
+
   final TextEditingController _serialController = TextEditingController();
 
   String? _serialError;
@@ -36,10 +47,10 @@ class _CrearTicketDialogState extends State<CrearTicketDialog> {
   @override
   void dispose() {
     _serialController.dispose();
+    _db.close();
     super.dispose();
   }
 
-  // Cuando selecciona categoría asigna la prioridad automáticamente
   void _onCategoriaChanged(String? categoria) {
     setState(() {
       _categoriaSeleccionada = categoria;
@@ -64,23 +75,22 @@ class _CrearTicketDialogState extends State<CrearTicketDialog> {
     setState(() => _isLoading = true);
 
     try {
-      // ── Busca o inserta la categoría ──
-      final categorias = await appDatabase.getAllCategorias();
-      final categoriaExistente = categorias.where(
-        (c) => c.Nombre == _categoriaSeleccionada,
-      ).toList();
+      final categorias = await _repository.getAllCategorias();
+      final categoriaExistente = categorias
+          .where((c) => c.Nombre == _categoriaSeleccionada)
+          .toList();
 
       models.Categoria categoria;
       if (categoriaExistente.isNotEmpty) {
         categoria = categoriaExistente.first;
       } else {
-        categoria = await appDatabase.insertCategoria(
+        categoria = await _repository.saveCategoria(
           models.Categoria(
             id: 0,
             Nombre: _categoriaSeleccionada!,
             Descripcion: '',
             TiempoRespuesta: _prioridadAsignada,
-            pendingSync: false,
+            pendingSync: true,
           ),
         );
       }
@@ -94,30 +104,24 @@ class _CrearTicketDialogState extends State<CrearTicketDialog> {
         pendingSync: false,
       );
 
-      final comentarioVacio = models.Comentario(
-        id: 0,
-        Contenido: '',
-        pendingSync: false,
+      final ticketCreado = await _repository.createTicket(
+        usuario: widget.usuario,
+        categoria: categoria,
+        tecnico: tecnicoVacio,
+        serialEquipo: serial,
+        comentarioInicial: '',
       );
 
-      await appDatabase.insertTicket( // ✅ usa appDatabase
-        models.Ticket(
-          id: 0,
-          Estado: 'Abierto',
-          FechaCreacion: DateTime.now(),
-          Prioridad: _prioridadAsignada,
-          SerialEquipo: serial,
-          pendingSync: true,
-          tecnico: tecnicoVacio,
-          categoria: categoria,
-          usuario: widget.usuario,
-          comentario: comentarioVacio,
+      await _repository.saveTicket(
+        ticketCreado.copyWith(
+          Prioridad: _prioridadAsignada.isNotEmpty
+              ? _prioridadAsignada
+              : ticketCreado.Prioridad,
         ),
       );
 
       if (!mounted) return;
       Navigator.of(context).pop(true);
-
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -139,8 +143,6 @@ class _CrearTicketDialogState extends State<CrearTicketDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
-          // ── Serial del equipo ──
           TextField(
             controller: _serialController,
             autofocus: true,
@@ -155,8 +157,6 @@ class _CrearTicketDialogState extends State<CrearTicketDialog> {
             },
           ),
           const SizedBox(height: 16),
-
-          // ── Categoría ──
           DropdownButtonFormField<String>(
             initialValue: _categoriaSeleccionada,
             decoration: const InputDecoration(
@@ -178,8 +178,6 @@ class _CrearTicketDialogState extends State<CrearTicketDialog> {
             onChanged: _onCategoriaChanged,
           ),
           const SizedBox(height: 16),
-
-          // ── Prioridad asignada automáticamente ──
           if (_prioridadAsignada.isNotEmpty)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

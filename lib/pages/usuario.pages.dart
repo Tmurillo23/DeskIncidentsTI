@@ -1,8 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
+import '../data/app_database.dart';
 import '../models/desk.model.dart' as models;
-import '../widgets/ticket_card.dart';
+import '../services/auth_service.dart';
+import '../services/ticket_remote_service.dart';
+import '../services/ticket_repository.dart';
 import '../widgets/crear_ticket.dart';
-import '../main.dart';
+import '../widgets/ticket_card.dart';
 
 class UsuarioPage extends StatefulWidget {
   final models.Usuario usuario;
@@ -17,6 +23,15 @@ class UsuarioPage extends StatefulWidget {
 }
 
 class _UsuarioPageState extends State<UsuarioPage> {
+  final AppDatabase _db = AppDatabase();
+  final _authService = FirebaseAuthService();
+  final _remoteService = TicketRemoteService();
+  late final TicketRepository _repository = TicketRepository(
+    db: _db,
+    remoteService: _remoteService,
+    authService: _authService,
+  );
+
   List<models.Ticket> _tickets = [];
   bool _isLoading = true;
 
@@ -26,48 +41,46 @@ class _UsuarioPageState extends State<UsuarioPage> {
     _cargarTickets();
   }
 
+  @override
+  void dispose() {
+    unawaited(_db.close());
+    super.dispose();
+  }
+
   Future<void> _cargarTickets() async {
     setState(() => _isLoading = true);
+
     try {
-      final todos = await appDatabase.getAllTickets();
-      
-      // ✅ prints para depurar
-      print('Total tickets: ${todos.length}');
-      for (var t in todos) {
-        print('Ticket ${t.id} - usuario correo: ${t.usuario.Correo} - widget correo: ${widget.usuario.Correo}');
-      }
-      
+      final todos = await _repository.getAllTickets();
+
       setState(() {
         _tickets = todos
             .where((t) => t.usuario.Correo == widget.usuario.Correo)
             .toList();
-        print('Tickets filtrados: ${_tickets.length}');
         _isLoading = false;
       });
     } catch (e) {
-      print('ERROR: $e');
       setState(() => _isLoading = false);
     }
   }
 
   Future<void> _abrirCrearTicket() async {
-  final resultado = await showDialog<bool>(
-    context: context,
-    builder: (_) => CrearTicketDialog(usuario: widget.usuario),
-  );
-
-  print('Resultado dialog: $resultado');
-  if (resultado == true) {
-    await _cargarTickets();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ticket creado correctamente'),
-        backgroundColor: Colors.green,
-      ),
+    final resultado = await showDialog<bool>(
+      context: context,
+      builder: (_) => CrearTicketDialog(usuario: widget.usuario),
     );
+
+    if (resultado == true) {
+      await _cargarTickets();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ticket creado correctamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -89,8 +102,11 @@ class _UsuarioPageState extends State<UsuarioPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.confirmation_number_outlined,
-                          size: 64, color: Colors.grey),
+                      const Icon(
+                        Icons.confirmation_number_outlined,
+                        size: 64,
+                        color: Colors.grey,
+                      ),
                       const SizedBox(height: 16),
                       const Text(
                         'No tienes tickets creados',
@@ -114,8 +130,6 @@ class _UsuarioPageState extends State<UsuarioPage> {
                     },
                   ),
                 ),
-
-      // ── Botón flotante para crear ticket ──
       floatingActionButton: _tickets.isEmpty
           ? null
           : FloatingActionButton.extended(

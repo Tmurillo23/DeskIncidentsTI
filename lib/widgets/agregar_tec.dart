@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+
 import '../data/app_database.dart';
 import '../models/desk.model.dart' as models;
+import '../services/auth_service.dart';
+import '../services/ticket_remote_service.dart';
+import '../services/ticket_repository.dart';
 
 class AgregarTec {
   final String Nombre;
@@ -22,6 +26,13 @@ class AgregarTecDialog extends StatefulWidget {
 }
 
 class _AgregarTecDialogState extends State<AgregarTecDialog> {
+  final AppDatabase _db = AppDatabase();
+  late final TicketRepository _repository = TicketRepository(
+    db: _db,
+    remoteService: TicketRemoteService(),
+    authService: FirebaseAuthService(),
+  );
+
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _correoController = TextEditingController();
   final TextEditingController _documentoController = TextEditingController();
@@ -39,6 +50,7 @@ class _AgregarTecDialogState extends State<AgregarTecDialog> {
     _correoController.dispose();
     _documentoController.dispose();
     _passwordController.dispose();
+    _db.close();
     super.dispose();
   }
 
@@ -75,9 +87,7 @@ class _AgregarTecDialogState extends State<AgregarTecDialog> {
     setState(() => _isLoading = true);
 
     try {
-      final db = AppDatabase();
-
-      await db.insertTecnico(
+      await _repository.saveTecnico(
         models.Tecnico(
           id: 0,
           Nombre: nombre,

@@ -1,16 +1,21 @@
-// lib/widgets/asignar_tec_card.dart
 import 'package:flutter/material.dart';
-import '../main.dart';
+
+import '../data/app_database.dart';
 import '../models/desk.model.dart' as models;
+import '../services/auth_service.dart';
+import '../services/ticket_remote_service.dart';
+import '../services/ticket_repository.dart';
 
 class AsignarTecCard extends StatefulWidget {
   final models.Ticket ticket;
-  final VoidCallback onAsignado; // ✅ callback para recargar la lista
+  final VoidCallback onAsignado;
+  final models.Usuario? actor;
 
   const AsignarTecCard({
     super.key,
     required this.ticket,
     required this.onAsignado,
+    this.actor,
   });
 
   @override
@@ -18,6 +23,13 @@ class AsignarTecCard extends StatefulWidget {
 }
 
 class _AsignarTecCardState extends State<AsignarTecCard> {
+  final AppDatabase _db = AppDatabase();
+  late final TicketRepository _repository = TicketRepository(
+    db: _db,
+    remoteService: TicketRemoteService(),
+    authService: FirebaseAuthService(),
+  );
+
   List<models.Tecnico> _tecnicos = [];
   models.Tecnico? _tecnicoSeleccionado;
   bool _isLoading = false;
@@ -29,21 +41,32 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
     _cargarTecnicos();
   }
 
+  @override
+  void dispose() {
+    _db.close();
+    super.dispose();
+  }
+
   Future<void> _cargarTecnicos() async {
     try {
-      final tecnicos = await appDatabase.getAllTecnicos();
+      final tecnicos = await _repository.getAllTecnicos();
+
+      models.Tecnico? seleccionado;
+      if (widget.ticket.tecnico.id != 0) {
+        for (final tecnico in tecnicos) {
+          if (tecnico.id == widget.ticket.tecnico.id) {
+            seleccionado = tecnico;
+            break;
+          }
+        }
+      }
+
       setState(() {
         _tecnicos = tecnicos;
-        // ✅ si ya tiene técnico asignado lo preselecciona
-        if (widget.ticket.tecnico.id != 0) {
-          _tecnicoSeleccionado = tecnicos.firstWhere(
-            (t) => t.id == widget.ticket.tecnico.id,
-            orElse: () => tecnicos.first,
-          );
-        }
+        _tecnicoSeleccionado = seleccionado ?? (tecnicos.isNotEmpty ? tecnicos.first : null);
         _cargandoTecnicos = false;
       });
-    } catch (e) {
+    } catch (_) {
       setState(() => _cargandoTecnicos = false);
     }
   }
@@ -54,18 +77,30 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
     setState(() => _isLoading = true);
 
     try {
-      await appDatabase.updateTicket(
-        widget.ticket.copyWith(tecnico: _tecnicoSeleccionado),
+      final ticketActualizado = widget.ticket.copyWith(
+        tecnico: _tecnicoSeleccionado!,
       );
+
+      if (widget.actor != null) {
+        await _repository.assignTicket(
+          actor: widget.actor!,
+          ticket: widget.ticket,
+          tecnico: _tecnicoSeleccionado!,
+        );
+      } else {
+        await _repository.saveTicket(ticketActualizado);
+      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Técnico ${_tecnicoSeleccionado!.Nombre} asignado correctamente'),
+          content: Text(
+            'Técnico ${_tecnicoSeleccionado!.Nombre} asignado correctamente',
+          ),
           backgroundColor: Colors.green,
         ),
       );
-      widget.onAsignado(); // ✅ recarga la lista en tickets_page
+      widget.onAsignado();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -90,8 +125,6 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-            // ── Encabezado ──
             Row(
               children: [
                 Container(
@@ -118,8 +151,11 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.flag, size: 12,
-                          color: _prioridadColor(widget.ticket.Prioridad)),
+                      Icon(
+                        Icons.flag,
+                        size: 12,
+                        color: _prioridadColor(widget.ticket.Prioridad),
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         widget.ticket.Prioridad,
@@ -133,7 +169,6 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
                   ),
                 ),
                 const Spacer(),
-                // ── Badge técnico actual ──
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
@@ -172,8 +207,6 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
               ],
             ),
             const SizedBox(height: 12),
-
-            // ── Info del ticket ──
             Row(
               children: [
                 const Icon(Icons.computer, size: 16, color: Colors.grey),
@@ -207,8 +240,6 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
               ],
             ),
             const Divider(height: 20),
-
-            // ── Lista desplegable de técnicos ──
             _cargandoTecnicos
                 ? const Center(child: CircularProgressIndicator())
                 : _tecnicos.isEmpty
@@ -255,27 +286,18 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
                         },
                       ),
             const SizedBox(height: 12),
-
-            // ── Botón asignar ──
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: _isLoading || _tecnicoSeleccionado == null
-                    ? null
-                    : _asignar,
+                onPressed: _isLoading || _tecnicoSeleccionado == null ? null : _asignar,
                 icon: _isLoading
                     ? const SizedBox(
-                        width: 18,
-                        height: 18,
+                        width: 16,
+                        height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.person_add),
-                label: Text(
-                  _isLoading ? 'Asignando...' : 'Asignar técnico',
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF5C6BC0),
-                ),
+                    : const Icon(Icons.assignment_ind),
+                label: Text(_isLoading ? 'Asignando...' : 'Asignar técnico'),
               ),
             ),
           ],
@@ -286,10 +308,14 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
 
   Color _prioridadColor(String prioridad) {
     switch (prioridad.toLowerCase()) {
-      case 'alta': return Colors.red;
-      case 'media': return Colors.orange;
-      case 'baja': return Colors.green;
-      default: return Colors.grey;
+      case 'alta':
+        return Colors.red;
+      case 'media':
+        return Colors.orange;
+      case 'baja':
+        return Colors.green;
+      default:
+        return Colors.grey;
     }
   }
 }

@@ -1,6 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import '../data/app_database.dart';
 import '../models/desk.model.dart' as models;
+import '../services/auth_service.dart';
+import '../services/ticket_remote_service.dart';
+import '../services/ticket_repository.dart';
 import '../widgets/tecnico_card.dart';
 
 class TecnicosPage extends StatefulWidget {
@@ -12,6 +18,14 @@ class TecnicosPage extends StatefulWidget {
 
 class _TecnicosPageState extends State<TecnicosPage> {
   final AppDatabase _db = AppDatabase();
+  final _authService = FirebaseAuthService();
+  final _remoteService = TicketRemoteService();
+  late final TicketRepository _repository = TicketRepository(
+    db: _db,
+    remoteService: _remoteService,
+    authService: _authService,
+  );
+
   List<models.Tecnico> _tecnicos = [];
   bool _isLoading = true;
 
@@ -21,13 +35,24 @@ class _TecnicosPageState extends State<TecnicosPage> {
     _cargarTecnicos();
   }
 
+  @override
+  void dispose() {
+    unawaited(_db.close());
+    super.dispose();
+  }
+
   Future<void> _cargarTecnicos() async {
     setState(() => _isLoading = true);
-    final tecnicos = await _db.getAllTecnicos();
-    setState(() {
-      _tecnicos = tecnicos;
-      _isLoading = false;
-    });
+
+    try {
+      final tecnicos = await _repository.getAllTecnicos();
+      setState(() {
+        _tecnicos = tecnicos;
+        _isLoading = false;
+      });
+    } catch (_) {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -60,7 +85,7 @@ class _TecnicosPageState extends State<TecnicosPage> {
                   ),
                 )
               : RefreshIndicator(
-                  onRefresh: _cargarTecnicos, // ✅ jalar para recargar
+                  onRefresh: _cargarTecnicos,
                   child: ListView.builder(
                     itemCount: _tecnicos.length,
                     itemBuilder: (context, index) {

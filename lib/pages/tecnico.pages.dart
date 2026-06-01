@@ -1,6 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import '../main.dart';
+
+import '../data/app_database.dart';
 import '../models/desk.model.dart' as models;
+import '../services/auth_service.dart';
+import '../services/ticket_remote_service.dart';
+import '../services/ticket_repository.dart';
 
 class TecnicoPage extends StatefulWidget {
   final models.Tecnico tecnico;
@@ -15,6 +21,15 @@ class TecnicoPage extends StatefulWidget {
 }
 
 class _TecnicoPageState extends State<TecnicoPage> {
+  final AppDatabase _db = AppDatabase();
+  final _authService = FirebaseAuthService();
+  final _remoteService = TicketRemoteService();
+  late final TicketRepository _repository = TicketRepository(
+    db: _db,
+    remoteService: _remoteService,
+    authService: _authService,
+  );
+
   List<models.Ticket> _tickets = [];
   bool _isLoading = true;
 
@@ -24,119 +39,110 @@ class _TecnicoPageState extends State<TecnicoPage> {
     _cargarTickets();
   }
 
+  @override
+  void dispose() {
+    unawaited(_db.close());
+    super.dispose();
+  }
+
   Future<void> _cargarTickets() async {
     setState(() => _isLoading = true);
 
     try {
-      final tickets = await appDatabase.getTicketsByTecnico(widget.tecnico.id);
+      final tickets = await _repository.getAllTickets();
 
       setState(() {
-        _tickets = tickets;
+        _tickets = tickets.where((t) => t.tecnico.id == widget.tecnico.id).toList();
         _isLoading = false;
       });
     } catch (e) {
-      print('Error cargando tickets del técnico: $e');
       setState(() => _isLoading = false);
     }
   }
 
   Future<void> _editarComentario(models.Ticket ticket) async {
-  final controller = TextEditingController(
-    text: ticket.comentario.Contenido,
-  );
+    final controller = TextEditingController(
+      text: ticket.comentario.Contenido,
+    );
 
-  final resultado = await showDialog<bool>(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text('Editar comentario del ticket #${ticket.id}'),
-        content: TextField(
-          controller: controller,
-          maxLines: 4,
-          decoration: const InputDecoration(
-            labelText: 'Comentario',
-            border: OutlineInputBorder(),
+    final resultado = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Editar comentario del ticket #${ticket.id}'),
+          content: TextField(
+            controller: controller,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'Comentario',
+              border: OutlineInputBorder(),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Guardar'),
-          ),
-        ],
-      );
-    },
-  );
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
 
-  if (resultado != true) return;
-
-  try {
-    final contenidoNuevo = controller.text.trim();
-
-    if (contenidoNuevo.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('El comentario no puede estar vacío'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+    if (resultado != true) {
+      controller.dispose();
       return;
     }
 
-    print('Ticket id: ${ticket.id}');
-    print('Comentario id actual: ${ticket.comentario.id}');
-    print('Contenido nuevo: $contenidoNuevo');
+    try {
+      final contenidoNuevo = controller.text.trim();
 
-    if (ticket.comentario.id == 0) {
-      final comentarioInsertado = await appDatabase.insertComentario(
-        models.Comentario(
-          id: 0,
-          Contenido: contenidoNuevo,
-          pendingSync: true,
-        ),
+      if (contenidoNuevo.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('El comentario no puede estar vacío'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        controller.dispose();
+        return;
+      }
+
+      final comentario = ticket.comentario.copyWith(
+        Contenido: contenidoNuevo,
+        pendingSync: true,
+      );
+
+      await _repository.saveComentario(
+        comentario,
         ticketId: ticket.id,
       );
 
-      print('Comentario insertado con id: ${comentarioInsertado.id}');
-    } else {
-      await appDatabase.updateComentario(
-        models.Comentario(
-          id: ticket.comentario.id,
-          Contenido: contenidoNuevo,
-          pendingSync: true,
-        ),
-        ticketId: ticket.id,
-      );
+      await _cargarTickets();
 
-      print('Comentario actualizado con id: ${ticket.comentario.id}');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Comentario actualizado correctamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al guardar comentario: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      controller.dispose();
     }
-
-    await _cargarTickets();
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Comentario actualizado correctamente'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  } catch (e) {
-    print('Error al guardar comentario: $e');
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Error al guardar comentario: $e'),
-        backgroundColor: Colors.red,
-      ),
-    );
   }
-}
 
   Color _prioridadColor(String prioridad) {
     switch (prioridad.toLowerCase()) {
@@ -298,9 +304,7 @@ class _TecnicoPageState extends State<TecnicoPage> {
                               const SizedBox(height: 12),
                               const Text(
                                 'Comentario',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 6),
                               Container(

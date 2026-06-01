@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../widgets/admin_button.dart';
 import '../widgets/agregar_tec.dart';
 import 'tecnicos_page.dart';
@@ -29,8 +30,6 @@ class AdminPage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-
-            // ── Título de bienvenida ──
             const Icon(
               Icons.admin_panel_settings,
               size: 64,
@@ -56,8 +55,6 @@ class AdminPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 48),
-
-            // ── Botones en fila ──
             Row(
               children: [
                 Expanded(
@@ -67,7 +64,7 @@ class AdminPage extends StatelessWidget {
                     color: const Color(0xFF5C6BC0),
                     onTap: () {
                       Navigator.push(
-                        context, 
+                        context,
                         MaterialPageRoute(builder: (_) => const TicketsPage()),
                       );
                     },
@@ -80,9 +77,9 @@ class AdminPage extends StatelessWidget {
                     label: 'Agregar un técnico nuevo',
                     color: const Color(0xFF7986CB),
                     onTap: () {
-                      Navigator.push(
-                        context, 
-                        MaterialPageRoute(builder: (_) => const AgregarTecDialog()),
+                      showDialog(
+                        context: context,
+                        builder: (_) => const AgregarTecDialog(),
                       );
                     },
                   ),
@@ -95,7 +92,7 @@ class AdminPage extends StatelessWidget {
                     color: const Color(0xFF9FA8DA),
                     onTap: () {
                       Navigator.push(
-                        context, 
+                        context,
                         MaterialPageRoute(builder: (_) => const TecnicosPage()),
                       );
                     },
