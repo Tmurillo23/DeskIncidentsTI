@@ -7,6 +7,7 @@ import '../models/desk.model.dart' as models;
 import '../services/auth_service.dart';
 import '../services/ticket_remote_service.dart';
 import '../services/ticket_repository.dart';
+import 'login.pages.dart';
 
 class TecnicoPage extends StatefulWidget {
   final models.Tecnico tecnico;
@@ -190,6 +191,23 @@ class _TecnicoPageState extends State<TecnicoPage> {
         ),
         backgroundColor: const Color(0xFF5C6BC0),
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'Cerrar sesión',
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              try {
+                await _authService.logout();
+              } catch (_) {}
+              if (!mounted) return;
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+                (route) => false,
+              );
+            },
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

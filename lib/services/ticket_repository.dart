@@ -498,7 +498,10 @@ class TicketRepository {
 
   Future<models.Usuario?> findUserByEmail(String email) async {
     final remote = await remoteService.fetchUserByEmail(email);
-    if (remote != null) return remote;
+    if (remote != null) {
+      await db.upsertUsuarioFromRemote(remote);
+      return remote;
+    }
 
     final users = await db.getAllUsuarios();
     for (final user in users) {
@@ -512,7 +515,10 @@ class TicketRepository {
 
   Future<models.Tecnico?> findTechnicianByEmail(String email) async {
     final remote = await remoteService.fetchTechnicianByEmail(email);
-    if (remote != null) return remote;
+    if (remote != null) {
+      await db.upsertTecnicoFromRemote(remote);
+      return remote;
+    }
 
     final technicians = await db.getAllTecnicos();
     for (final tech in technicians) {

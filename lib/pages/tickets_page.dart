@@ -7,6 +7,7 @@ import '../models/desk.model.dart' as models;
 import '../services/auth_service.dart';
 import '../services/ticket_remote_service.dart';
 import '../services/ticket_repository.dart';
+import 'login.pages.dart';
 import '../widgets/asignar_tec_card.dart';
 
 class TicketsPage extends StatefulWidget {
@@ -92,6 +93,22 @@ class _TicketsPageState extends State<TicketsPage> {
         backgroundColor: const Color(0xFF5C6BC0),
         elevation: 0,
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'Cerrar sesión',
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              try {
+                await _authService.logout();
+              } catch (_) {}
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+                (route) => false,
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [

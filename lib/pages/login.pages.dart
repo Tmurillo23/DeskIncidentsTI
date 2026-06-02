@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../data/app_database.dart';
 import '../models/desk.model.dart' as models;
+import '../services/app_logger.dart';
 import '../services/auth_service.dart';
 import '../services/ticket_remote_service.dart';
 import '../services/ticket_repository.dart';
@@ -89,6 +90,19 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  Future<void> _syncRemoteProfiles() async {
+    try {
+      await _repository.pullRemoteToLocal();
+    } catch (error, stackTrace) {
+      AppLogger.warning('No fue posible sincronizar perfiles remotos antes del login');
+      AppLogger.error(
+        'Error sincronizando perfiles remotos antes del login',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
   Future<void> _submit() async {
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) return;
@@ -154,6 +168,8 @@ class _LoginPageState extends State<LoginPage> {
           email: email,
           password: password,
         );
+
+        await _syncRemoteProfiles();
 
         if (_rolSeleccionado == 'tecnico') {
           var tecnico = await _repository.findTechnicianByEmail(email);

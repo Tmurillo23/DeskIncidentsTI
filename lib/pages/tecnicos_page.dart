@@ -7,6 +7,7 @@ import '../models/desk.model.dart' as models;
 import '../services/auth_service.dart';
 import '../services/ticket_remote_service.dart';
 import '../services/ticket_repository.dart';
+import 'login.pages.dart';
 import '../widgets/tecnico_card.dart';
 
 class TecnicosPage extends StatefulWidget {
@@ -45,6 +46,7 @@ class _TecnicosPageState extends State<TecnicosPage> {
     setState(() => _isLoading = true);
 
     try {
+      await _repository.pullRemoteToLocal();
       final tecnicos = await _repository.getAllTecnicos();
       setState(() {
         _tecnicos = tecnicos;
@@ -67,6 +69,22 @@ class _TecnicosPageState extends State<TecnicosPage> {
         backgroundColor: const Color(0xFF5C6BC0),
         elevation: 0,
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'Cerrar sesión',
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              try {
+                await _authService.logout();
+              } catch (_) {}
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+                (route) => false,
+              );
+            },
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

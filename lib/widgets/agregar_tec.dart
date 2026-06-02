@@ -87,7 +87,27 @@ class _AgregarTecDialogState extends State<AgregarTecDialog> {
     setState(() => _isLoading = true);
 
     try {
-      await _repository.saveTecnico(
+      // Primero intentamos crear la cuenta en Firebase Auth para el técnico.
+      try {
+        await FirebaseAuthService().registerWithEmailAndPassword(
+          email: correo,
+          password: password,
+        );
+        // Si la creación en Auth falla por existir ya, lo manejamos abajo.
+      } catch (e) {
+        // No bloqueamos el guardado local/remoto si la creación en Auth falla.
+        // Mostramos una advertencia al usuario pero continuamos.
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Aviso: no se pudo crear usuario Auth: $e'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+
+      final saved = await _repository.saveTecnico(
         models.Tecnico(
           id: 0,
           Nombre: nombre,
@@ -99,18 +119,28 @@ class _AgregarTecDialogState extends State<AgregarTecDialog> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Técnico agregado correctamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
+
+      if (saved.pendingSync == false) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Técnico agregado y sincronizado en Firebase'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Técnico guardado localmente. Sincronización pendiente.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
 
       Navigator.of(context).pop(
         AgregarTec(
-          Nombre: nombre,
-          Correo: correo,
-          DocumentoIdentidad: int.tryParse(documento) ?? 0,
+          Nombre: saved.Nombre,
+          Correo: saved.Correo,
+          DocumentoIdentidad: saved.DocumentoIdentidad,
         ),
       );
     } catch (e) {

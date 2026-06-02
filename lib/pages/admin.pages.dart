@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../widgets/admin_button.dart';
 import '../widgets/agregar_tec.dart';
+import '../services/auth_service.dart';
+import 'login.pages.dart';
 import 'tecnicos_page.dart';
 import 'tickets_page.dart';
 
@@ -23,6 +25,22 @@ class AdminPage extends StatelessWidget {
         backgroundColor: const Color(0xFF5C6BC0),
         elevation: 0,
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'Cerrar sesión',
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              try {
+                await FirebaseAuthService().logout();
+              } catch (_) {}
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+                (route) => false,
+              );
+            },
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(24),

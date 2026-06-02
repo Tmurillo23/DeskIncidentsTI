@@ -40,6 +40,7 @@ class _CrearTicketDialogState extends State<CrearTicketDialog> {
   final TextEditingController _serialController = TextEditingController();
 
   String? _serialError;
+  String? _categoriaError;
   String? _categoriaSeleccionada;
   String _prioridadAsignada = '';
   bool _isLoading = false;
@@ -54,6 +55,7 @@ class _CrearTicketDialogState extends State<CrearTicketDialog> {
   void _onCategoriaChanged(String? categoria) {
     setState(() {
       _categoriaSeleccionada = categoria;
+      _categoriaError = null;
       _prioridadAsignada = _categoriasPrioridad[categoria] ?? '';
     });
   }
@@ -67,7 +69,7 @@ class _CrearTicketDialogState extends State<CrearTicketDialog> {
       hasError = true;
     }
     if (_categoriaSeleccionada == null) {
-      setState(() => _serialError = 'Selecciona una categoría.');
+      setState(() => _categoriaError = 'Selecciona una categoría.');
       hasError = true;
     }
     if (hasError) return;
@@ -177,6 +179,16 @@ class _CrearTicketDialogState extends State<CrearTicketDialog> {
                 .toList(),
             onChanged: _onCategoriaChanged,
           ),
+          if (_categoriaError != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _categoriaError!,
+              style: const TextStyle(
+                color: Colors.red,
+                fontSize: 12,
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           if (_prioridadAsignada.isNotEmpty)
             Container(
