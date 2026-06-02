@@ -35,6 +35,8 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
   bool _isLoading = false;
   bool _cargandoTecnicos = true;
 
+  bool get _isClosed => widget.ticket.Estado.trim().toLowerCase() == 'cerrado';
+
   @override
   void initState() {
     super.initState();
@@ -72,6 +74,7 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
   }
 
   Future<void> _asignar() async {
+    if (_isClosed) return;
     if (_tecnicoSeleccionado == null) return;
 
     setState(() => _isLoading = true);
@@ -114,6 +117,38 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
     }
   }
 
+  Color _prioridadColor(String prioridad) {
+    switch (prioridad.toLowerCase()) {
+      case 'alta':
+        return Colors.red;
+      case 'media':
+        return Colors.orange;
+      case 'baja':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _estadoColor(String estado) {
+    switch (estado.toLowerCase()) {
+      case 'pendiente':
+        return Colors.orange;
+      case 'asignado':
+        return Colors.blue;
+      case 'en proceso':
+        return Colors.purple;
+      case 'resuelto':
+        return Colors.teal;
+      case 'cerrado':
+        return Colors.green;
+      case 'vencido':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -137,6 +172,22 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
                     '#${widget.ticket.id}',
                     style: const TextStyle(
                       color: Color(0xFF5C6BC0),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _estadoColor(widget.ticket.Estado).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    widget.ticket.Estado,
+                    style: TextStyle(
+                      color: _estadoColor(widget.ticket.Estado),
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -240,82 +291,89 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
               ],
             ),
             const Divider(height: 20),
-            _cargandoTecnicos
-                ? const Center(child: CircularProgressIndicator())
-                : _tecnicos.isEmpty
-                    ? const Text(
-                        'No hay técnicos registrados',
-                        style: TextStyle(color: Colors.grey),
-                      )
-                    : DropdownButtonFormField<models.Tecnico>(
-                        initialValue: _tecnicoSeleccionado,
-                        decoration: const InputDecoration(
-                          labelText: 'Asignar técnico',
-                          prefixIcon: Icon(Icons.engineering),
-                          border: OutlineInputBorder(),
-                        ),
-                        items: _tecnicos
-                            .map(
-                              (t) => DropdownMenuItem(
-                                value: t,
-                                child: Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 12,
-                                      backgroundColor: const Color(0xFF5C6BC0),
-                                      child: Text(
-                                        t.Nombre.isNotEmpty
-                                            ? t.Nombre[0].toUpperCase()
-                                            : '?',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
+            if (_isClosed) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                ),
+                child: const Text(
+                  'Ticket cerrado. No se puede reasignar ni modificar.',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ] else ...[
+              _cargandoTecnicos
+                  ? const Center(child: CircularProgressIndicator())
+                  : _tecnicos.isEmpty
+                      ? const Text(
+                          'No hay técnicos registrados',
+                          style: TextStyle(color: Colors.grey),
+                        )
+                      : DropdownButtonFormField<models.Tecnico>(
+                          initialValue: _tecnicoSeleccionado,
+                          decoration: const InputDecoration(
+                            labelText: 'Asignar técnico',
+                            prefixIcon: Icon(Icons.engineering),
+                            border: OutlineInputBorder(),
+                          ),
+                          items: _tecnicos
+                              .map(
+                                (t) => DropdownMenuItem(
+                                  value: t,
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 12,
+                                        backgroundColor: const Color(0xFF5C6BC0),
+                                        child: Text(
+                                          t.Nombre.isNotEmpty
+                                              ? t.Nombre[0].toUpperCase()
+                                              : '?',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(t.Nombre),
-                                  ],
+                                      const SizedBox(width: 8),
+                                      Text(t.Nombre),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (t) {
-                          setState(() => _tecnicoSeleccionado = t);
-                        },
-                      ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _isLoading || _tecnicoSeleccionado == null ? null : _asignar,
-                icon: _isLoading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.assignment_ind),
-                label: Text(_isLoading ? 'Asignando...' : 'Asignar técnico'),
+                              )
+                              .toList(),
+                          onChanged: (t) {
+                            setState(() => _tecnicoSeleccionado = t);
+                          },
+                        ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _isLoading || _tecnicoSeleccionado == null ? null : _asignar,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.assignment_ind),
+                  label: Text(_isLoading ? 'Asignando...' : 'Asignar técnico'),
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
     );
-  }
-
-  Color _prioridadColor(String prioridad) {
-    switch (prioridad.toLowerCase()) {
-      case 'alta':
-        return Colors.red;
-      case 'media':
-        return Colors.orange;
-      case 'baja':
-        return Colors.green;
-      default:
-        return Colors.grey;
-    }
   }
 }

@@ -46,8 +46,9 @@ class _TecnicosPageState extends State<TecnicosPage> {
     setState(() => _isLoading = true);
 
     try {
-      await _repository.pullRemoteToLocal();
+      await _repository.syncAll();
       final tecnicos = await _repository.getAllTecnicos();
+
       setState(() {
         _tecnicos = tecnicos;
         _isLoading = false;
@@ -77,6 +78,7 @@ class _TecnicosPageState extends State<TecnicosPage> {
               try {
                 await _authService.logout();
               } catch (_) {}
+              if (!mounted) return;
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (_) => const LoginPage()),

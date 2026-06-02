@@ -46,22 +46,40 @@ class _TecnicoPageState extends State<TecnicoPage> {
     super.dispose();
   }
 
+  models.Usuario _asUsuarioActor() {
+    return models.Usuario(
+      id: widget.tecnico.id,
+      Nombre: widget.tecnico.Nombre,
+      DocumentoIdentidad: widget.tecnico.DocumentoIdentidad,
+      Correo: widget.tecnico.Correo,
+      Rol: 'tecnico',
+      pendingSync: false,
+    );
+  }
+
   Future<void> _cargarTickets() async {
     setState(() => _isLoading = true);
 
     try {
+      await _repository.syncAll();
       final tickets = await _repository.getAllTickets();
 
       setState(() {
         _tickets = tickets.where((t) => t.tecnico.id == widget.tecnico.id).toList();
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (_) {
       setState(() => _isLoading = false);
     }
   }
 
+  bool _isClosed(models.Ticket ticket) {
+    return ticket.Estado.trim().toLowerCase() == 'cerrado';
+  }
+
   Future<void> _editarComentario(models.Ticket ticket) async {
+    if (_isClosed(ticket)) return;
+
     final controller = TextEditingController(
       text: ticket.comentario.Contenido,
     );
@@ -145,6 +163,118 @@ class _TecnicoPageState extends State<TecnicoPage> {
     }
   }
 
+  Future<void> _marcarComoSolucionado(models.Ticket ticket) async {
+    if (_isClosed(ticket)) return;
+
+    final controller = TextEditingController(text: ticket.comentario.Contenido);
+
+    final comentario = await showDialog<String?>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Marcar ticket #${ticket.id} como solucionado'),
+          content: TextField(
+            controller: controller,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'Comentario de solución',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, controller.text.trim()),
+              child: const Text('Continuar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    controller.dispose();
+
+    if (comentario == null) return;
+    if (comentario.trim().isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Debes escribir un comentario de solución'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final actor = _asUsuarioActor();
+      var actualizado = ticket.copyWith(
+        comentario: ticket.comentario.copyWith(
+          Contenido: comentario,
+          pendingSync: true,
+        ),
+      );
+
+      final status = actualizado.Estado.trim().toLowerCase();
+
+      if (status == 'pendiente') {
+        actualizado = await _repository.changeTicketStatus(
+          actor: actor,
+          ticket: actualizado,
+          nextStatus: 'Asignado',
+          solutionComment: comentario,
+        );
+      }
+
+      if (actualizado.Estado.trim().toLowerCase() == 'asignado') {
+        actualizado = await _repository.changeTicketStatus(
+          actor: actor,
+          ticket: actualizado,
+          nextStatus: 'En proceso',
+          solutionComment: comentario,
+        );
+      }
+
+      if (actualizado.Estado.trim().toLowerCase() == 'en proceso' ||
+          actualizado.Estado.trim().toLowerCase() == 'asignado') {
+        actualizado = await _repository.changeTicketStatus(
+          actor: actor,
+          ticket: actualizado,
+          nextStatus: 'Resuelto',
+          solutionComment: comentario,
+        );
+      }
+
+      actualizado = await _repository.changeTicketStatus(
+        actor: actor,
+        ticket: actualizado,
+        nextStatus: 'Cerrado',
+        solutionComment: comentario,
+      );
+
+      await _cargarTickets();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ticket marcado como solucionado y cerrado'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No fue posible cerrar el ticket: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Color _prioridadColor(String prioridad) {
     switch (prioridad.toLowerCase()) {
       case 'alta':
@@ -168,6 +298,10 @@ class _TecnicoPageState extends State<TecnicoPage> {
         return Colors.orange;
       case 'en progreso':
         return Colors.purple;
+      case 'asignado':
+        return Colors.blueAccent;
+      case 'resuelto':
+        return Colors.teal;
       default:
         return Colors.grey;
     }
@@ -231,6 +365,7 @@ class _TecnicoPageState extends State<TecnicoPage> {
                     itemCount: _tickets.length,
                     itemBuilder: (context, index) {
                       final ticket = _tickets[index];
+                      final isClosed = _isClosed(ticket);
 
                       return Card(
                         elevation: 2,
@@ -345,14 +480,40 @@ class _TecnicoPageState extends State<TecnicoPage> {
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: OutlinedButton.icon(
-                                  onPressed: () => _editarComentario(ticket),
-                                  icon: const Icon(Icons.edit_note),
-                                  label: const Text('Editar comentario'),
-                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: isClosed
+                                          ? null
+                                          : () => _editarComentario(ticket),
+                                      icon: const Icon(Icons.edit_note),
+                                      label: const Text('Editar comentario'),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: FilledButton.icon(
+                                      onPressed: isClosed
+                                          ? null
+                                          : () => _marcarComoSolucionado(ticket),
+                                      icon: const Icon(Icons.check_circle_outline),
+                                      label: const Text('Solucionado'),
+                                    ),
+                                  ),
+                                ],
                               ),
+                              if (isClosed) ...[
+                                const SizedBox(height: 10),
+                                const Text(
+                                  'Este ticket está cerrado y no puede editarse.',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),

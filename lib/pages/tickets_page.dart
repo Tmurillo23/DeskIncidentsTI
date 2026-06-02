@@ -46,9 +46,12 @@ class _TicketsPageState extends State<TicketsPage> {
 
   Future<void> _cargarDatos() async {
     setState(() => _isLoading = true);
+
     try {
+      await _repository.syncAll();
       final tickets = await _repository.getAllTickets();
       final actor = await _repository.getLoggedUserProfile();
+
       setState(() {
         _tickets = tickets;
         _actor = actor;
@@ -101,6 +104,7 @@ class _TicketsPageState extends State<TicketsPage> {
               try {
                 await _authService.logout();
               } catch (_) {}
+              if (!mounted) return;
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (_) => const LoginPage()),
