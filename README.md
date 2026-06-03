@@ -7,7 +7,9 @@
 ## Integrantes del Equipo
 
 Tatiana Murillo Mosquera
+
 Ana María alucema Fernandez
+
 Sebastián Tamayo Avedaño
 
 > **Equipo 2 — Proyecto Final · Desarrollo Móvil**
@@ -41,8 +43,8 @@ Las organizaciones enfrentan dificultades para gestionar de manera eficiente los
 | Correo | Contraseña | Rol |
 |--------|-----------|-----|
 | `admin@gmail.com` | `123456*` | Administrador |
-| `tecnico1@gmail.com` | `Tecnico123*` | Técnico |
-| `usuario1@gmail.com` | `Usuario123*` | Solicitante |
+| `tecnico1@gmail.com` | `123456*` | Técnico |
+| `usuario1@gmail.com` | `123456*` | Solicitante |
 
 ---
 
@@ -55,7 +57,7 @@ Las organizaciones enfrentan dificultades para gestionar de manera eficiente los
 | **Categoría** | Clasificación del incidente (ej: Hardware, Red, Software). Incluye tiempo de respuesta SLA. |
 | **Ticket** | Incidente registrado. Relaciona usuario, técnico y categoría. Tiene estado, prioridad y fecha de creación. |
 | **Comentario** | Observación o solución adjunta a un ticket. |
-| **SLA** | Tiempo máximo de atención definido por categoría. Determina si un ticket está **vencido**. |
+
 
 ---
 
@@ -169,13 +171,12 @@ La autenticación se realiza mediante **Firebase Authentication** con correo y c
 | Acción | Solicitante | Técnico | Administrador |
 |--------|:-----------:|:-------:|:-------------:|
 | Crear ticket | ✅ | ❌ | ❌ |
-| Ver mis tickets | ✅ | ✅ | ✅ |
+| Ver mis tickets | ✅ | ❌ | ❌  |
 | Ver todos los tickets | ❌ | ❌ | ✅ |
 | Cambiar estado de ticket | ❌ | ✅ | ❌ |
 | Agregar comentario |❌ | ✅ | ❌ |
 | Cerrar ticket | ❌ | ✅ | ❌ |
 | Reasignar técnico | ❌ | ❌ | ✅ |
-| Gestionar usuarios | ❌ | ❌ | ✅ |
 
 
 ---
@@ -265,11 +266,10 @@ android/app/google-services.json
 
 ---
 
-## Instrucciones para Generar e Instalar el APK
+## APK
 
-### Generar el APK
 
-Los apks (web y android) fue generado correctamente.2
+Los apks (web y android) fue generado correctamente.
 
 ---
 
