@@ -48,9 +48,6 @@ Marcar una opción:
 
 ## Justificación
 
-Escribir una justificación breve.
-
-Ejemplo si la build sí es RC:
 
 La build `1.0.0+1` puede considerarse RC-1 porque el flujo principal de tickets funciona, la app abre correctamente, permite crear y completar tickets, asigna técnicos y agregar comentarios a los roles que pueden hacerlo,maneja errores simulados sin crashear y no tiene bugs P1 abiertos. Los bugs menores encontrados quedaron documentados en el backlog.
 
@@ -58,51 +55,26 @@ La build `1.0.0+1` puede considerarse RC-1 porque el flujo principal de tickets 
 
 ## Bugs encontrados
 
-| ID | Título | Prioridad | Estado | Impacto en la RC |
+| ID | Título | Pasos para reproducir | Prioridad | Estado |
 |---|---|---|---|---|
-| BUG-01 | | P1 / P2 / P3 | Abierto / Cerrado | |
-| BUG-02 | | P1 / P2 / P3 | Abierto / Cerrado | |
-| BUG-03 | | P1 / P2 / P3 | Abierto / Cerrado | |
+| BUG-01 | Texto largo puede generar overflow visual | 1. Crear ticket con título de 30 carácteres| P2 | Mínimo |
+| BUG-02 | Falta mejorar el estado de carga al iniciar la app | 1. Abrir app  | P2 | Mínimo |
 
 ---
 
-## Clasificación de prioridades
-
-| Prioridad | Significado | ¿Bloquea RC? |
-|---|---|---|
-| P1 | Bloquea el flujo principal, causa crash, pérdida de datos o impide usar la app | Sí |
-| P2 | Afecta una funcionalidad importante, pero existe alternativa o workaround | Depende del contexto |
-| P3 | Error menor, visual o mejora secundaria | No necesariamente |
 
 ---
 
 ## Riesgos conocidos
 
-Registrar aquí riesgos que no necesariamente bloquean la RC, pero deben conocerse.
-
-Ejemplos:
 
 - Falta probar en dispositivo físico.
 - Falta probar con red inestable real.
 - Falta configurar Crashlytics para Android.
 - El estado offline solo se evidencia como sincronización pendiente.
-- Falta mejorar mensajes cuando Firebase rechaza permisos.
-- Falta validar comportamiento con muchos registros.
 
----
 
-## Evidencia usada para la decisión
 
-| Evidencia | Ubicación o descripción |
-|---|---|
-| Matriz de pruebas | `docs/matriz_pruebas.md` |
-| Logs observados | Terminal / Flutter logs / DevTools |
-| Build web generada | `build/web/` |
-| APK generado | `build/app/outputs/flutter-apk/app-release.apk` |
-| Capturas de pantalla | |
-| Backlog de bugs | |
-
----
 
 ## Declaración final
 
@@ -110,30 +82,16 @@ Completar una de las siguientes frases:
 
 ### Si es RC
 
-La build `__________` puede considerarse **RC-1** porque:
+La build ` app-debug.apk ` puede considerarse **RC-1** porque:
 
-- 
-- 
-- 
+Cumple con los requitiso básico estipulados para su lanzamiento
 
-### Si no es RC
 
-La build `__________` **no puede considerarse RC-1 todavía** porque:
-
-- 
-- 
-- 
 
 ---
 
 ## Próximos pasos
 
-Listar las acciones necesarias después de esta evaluación.
-
-Ejemplos:
-
-- Corregir bugs P1.
-- Reintentar sincronización con Firebase.
 - Mejorar mensajes de error.
 - Probar en Android físico.
 - Generar APK release.
