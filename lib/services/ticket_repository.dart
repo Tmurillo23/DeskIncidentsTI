@@ -36,7 +36,10 @@ class TicketRepository {
 
   Future<List<models.Comentario>> getAllComentarios() => db.getAllComentarios();
 
-  Future<List<models.Ticket>> getAllTickets() => db.getAllTickets();
+  Future<List<models.Ticket>> getAllTickets() async {
+    await refreshOverdueTickets();
+    return db.getAllTickets();
+  }
 
   Future<List<models.Usuario>> getPendingUsuarios() => db.getPendingUsuarios();
 
@@ -218,10 +221,13 @@ class TicketRepository {
   Future<models.Ticket> saveTicket(models.Ticket ticket) async {
     final normalizedPriority = rules.determineInitialPriority(ticket.categoria);
     final normalizedStatus =
-        ticket.Estado.trim().isEmpty ? 'Pendiente' : ticket.Estado.trim();
+        ticket.Estado.trim().isEmpty ? TicketRulesService.statusPendiente : ticket.Estado.trim();
+
+    final currentTicket = ticket.copyWith(Estado: normalizedStatus);
+    final isOverdue = rules.isTicketOverdue(currentTicket);
 
     var localTicket = ticket.copyWith(
-      Estado: normalizedStatus,
+      Estado: isOverdue ? TicketRulesService.statusVencido : normalizedStatus,
       Prioridad: normalizedPriority,
       pendingSync: true,
     );
@@ -279,7 +285,7 @@ class TicketRepository {
 
     final ticket = models.Ticket(
       id: 0,
-      Estado: 'Pendiente',
+      Estado: TicketRulesService.statusPendiente,
       FechaCreacion: DateTime.now(),
       Prioridad: rules.determineInitialPriority(categoria),
       SerialEquipo: serialEquipo.trim(),
@@ -306,14 +312,14 @@ class TicketRepository {
       throw StateError('Solo el administrador puede reasignar tickets.');
     }
 
-    if (ticket.Estado.trim().toLowerCase() == 'cerrado') {
+    if (ticket.Estado.trim() == TicketRulesService.statusCerrado) {
       throw StateError('Un ticket cerrado no puede reasignarse.');
     }
 
     return saveTicket(
       ticket.copyWith(
         tecnico: tecnico,
-        Estado: 'Asignado',
+        Estado: TicketRulesService.statusAsignado,
       ),
     );
   }
@@ -331,12 +337,7 @@ class TicketRepository {
       throw StateError('Transición inválida: $current → $next');
     }
 
-    if (next.toLowerCase() == 'resuelto' &&
-        !rules.canResolveTicket(actor, ticket)) {
-      throw StateError('No tienes permiso para resolver este ticket.');
-    }
-
-    if (next.toLowerCase() == 'cerrado') {
+    if (next == TicketRulesService.statusCerrado) {
       if (!rules.canCloseTicket(
         actor,
         ticket,
@@ -366,8 +367,14 @@ class TicketRepository {
   Future<void> refreshOverdueTickets() async {
     final tickets = await db.getAllTickets();
     for (final ticket in tickets) {
+      final status = ticket.Estado.trim();
+      if (status == TicketRulesService.statusCerrado ||
+          status == TicketRulesService.statusVencido) {
+        continue;
+      }
+
       if (rules.isTicketOverdue(ticket)) {
-        await saveTicket(ticket.copyWith(Estado: 'Vencido'));
+        await saveTicket(ticket.copyWith(Estado: TicketRulesService.statusVencido));
       }
     }
   }

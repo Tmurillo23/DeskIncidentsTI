@@ -52,11 +52,16 @@ class _UsuarioPageState extends State<UsuarioPage> {
     setState(() => _isLoading = true);
 
     try {
+      await _repository.syncAll();
       final todos = await _repository.getAllTickets();
 
       setState(() {
         _tickets = todos
-            .where((t) => t.usuario.Correo == widget.usuario.Correo)
+            .where(
+              (t) =>
+                  t.usuario.Correo.trim().toLowerCase() ==
+                  widget.usuario.Correo.trim().toLowerCase(),
+            )
             .toList();
         _isLoading = false;
       });

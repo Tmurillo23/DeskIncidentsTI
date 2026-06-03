@@ -1,4 +1,3 @@
-// lib/widgets/ticket_card.dart
 import 'package:flutter/material.dart';
 import '../models/desk.model.dart' as models;
 
@@ -21,7 +20,6 @@ class TicketCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // ── Encabezado: ID, Estado, Prioridad ──
             Row(
               children: [
@@ -226,27 +224,27 @@ class TicketCard extends StatelessWidget {
   }
 
   Color _estadoColor(String estado) {
-    switch (estado.toLowerCase()) {
-      case 'abierto':
-        return Colors.blue;
-      case 'cerrado':
-        return Colors.green;
-      case 'pendiente':
+    switch (estado) {
+      case 'Pendiente':
         return Colors.orange;
-      case 'en progreso':
-        return Colors.purple;
+      case 'Asignado':
+        return Colors.blue;
+      case 'Vencido':
+        return Colors.red;
+      case 'Cerrado':
+        return Colors.green;
       default:
         return Colors.grey;
     }
   }
 
   Color _prioridadColor(String prioridad) {
-    switch (prioridad.toLowerCase()) {
-      case 'alta':
+    switch (prioridad.trim()) {
+      case 'Alta':
         return Colors.red;
-      case 'media':
+      case 'Media':
         return Colors.orange;
-      case 'baja':
+      case 'Baja':
         return Colors.green;
       default:
         return Colors.grey;

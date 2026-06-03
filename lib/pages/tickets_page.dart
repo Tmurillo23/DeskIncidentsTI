@@ -64,23 +64,6 @@ class _TicketsPageState extends State<TicketsPage> {
 
   List<models.Ticket> get _ticketsFiltrados {
     if (_filtroEstado == 'Todos') return _tickets;
-
-    if (_filtroEstado == 'Abierto') {
-      return _tickets.where((t) {
-        final status = t.Estado.toLowerCase();
-        return status == 'pendiente' ||
-            status == 'asignado' ||
-            status == 'en proceso';
-      }).toList();
-    }
-
-    if (_filtroEstado == 'En progreso') {
-      return _tickets.where((t) {
-        final status = t.Estado.toLowerCase();
-        return status == 'asignado' || status == 'en proceso';
-      }).toList();
-    }
-
     return _tickets.where((t) => t.Estado == _filtroEstado).toList();
   }
 
@@ -122,7 +105,7 @@ class _TicketsPageState extends State<TicketsPage> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Row(
-                children: ['Todos', 'Abierto', 'En progreso', 'Pendiente', 'Cerrado']
+                children: ['Todos', 'Pendiente', 'Asignado', 'Vencido', 'Cerrado']
                     .map(
                       (estado) => Padding(
                         padding: const EdgeInsets.only(right: 8),

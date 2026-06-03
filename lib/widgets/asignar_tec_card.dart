@@ -35,7 +35,7 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
   bool _isLoading = false;
   bool _cargandoTecnicos = true;
 
-  bool get _isClosed => widget.ticket.Estado.trim().toLowerCase() == 'cerrado';
+  bool get _isClosed => widget.ticket.Estado.trim() == 'Cerrado';
 
   @override
   void initState() {
@@ -65,7 +65,8 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
 
       setState(() {
         _tecnicos = tecnicos;
-        _tecnicoSeleccionado = seleccionado ?? (tecnicos.isNotEmpty ? tecnicos.first : null);
+        _tecnicoSeleccionado =
+            seleccionado ?? (tecnicos.isNotEmpty ? tecnicos.first : null);
         _cargandoTecnicos = false;
       });
     } catch (_) {
@@ -118,12 +119,12 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
   }
 
   Color _prioridadColor(String prioridad) {
-    switch (prioridad.toLowerCase()) {
-      case 'alta':
+    switch (prioridad.trim()) {
+      case 'Alta':
         return Colors.red;
-      case 'media':
+      case 'Media':
         return Colors.orange;
-      case 'baja':
+      case 'Baja':
         return Colors.green;
       default:
         return Colors.grey;
@@ -131,19 +132,15 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
   }
 
   Color _estadoColor(String estado) {
-    switch (estado.toLowerCase()) {
-      case 'pendiente':
+    switch (estado) {
+      case 'Pendiente':
         return Colors.orange;
-      case 'asignado':
+      case 'Asignado':
         return Colors.blue;
-      case 'en proceso':
-        return Colors.purple;
-      case 'resuelto':
-        return Colors.teal;
-      case 'cerrado':
-        return Colors.green;
-      case 'vencido':
+      case 'Vencido':
         return Colors.red;
+      case 'Cerrado':
+        return Colors.green;
       default:
         return Colors.grey;
     }
@@ -163,7 +160,8 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFFE8EAF6),
                     borderRadius: BorderRadius.circular(8),
@@ -179,9 +177,11 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _estadoColor(widget.ticket.Estado).withValues(alpha: 0.15),
+                    color: _estadoColor(widget.ticket.Estado)
+                        .withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -195,9 +195,11 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _prioridadColor(widget.ticket.Prioridad).withValues(alpha: 0.15),
+                    color: _prioridadColor(widget.ticket.Prioridad)
+                        .withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -221,7 +223,8 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: widget.ticket.tecnico.id == 0
                         ? Colors.orange.withValues(alpha: 0.15)
@@ -264,7 +267,10 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
                 const SizedBox(width: 8),
                 Text(
                   'Serial: ${widget.ticket.SerialEquipo}',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -332,7 +338,8 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
                                     children: [
                                       CircleAvatar(
                                         radius: 12,
-                                        backgroundColor: const Color(0xFF5C6BC0),
+                                        backgroundColor:
+                                            const Color(0xFF5C6BC0),
                                         child: Text(
                                           t.Nombre.isNotEmpty
                                               ? t.Nombre[0].toUpperCase()
@@ -359,7 +366,8 @@ class _AsignarTecCardState extends State<AsignarTecCard> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: _isLoading || _tecnicoSeleccionado == null ? null : _asignar,
+                  onPressed:
+                      _isLoading || _tecnicoSeleccionado == null ? null : _asignar,
                   icon: _isLoading
                       ? const SizedBox(
                           width: 16,

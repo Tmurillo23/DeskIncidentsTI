@@ -1,6 +1,14 @@
 import '../models/desk.model.dart' as models;
 
 class TicketRulesService {
+  /// Tiempo máximo de atención global para todos los tickets.
+  static const String globalMaxAttentionTime = '10m';
+
+  static const String statusPendiente = 'Pendiente';
+  static const String statusAsignado = 'Asignado';
+  static const String statusVencido = 'Vencido';
+  static const String statusCerrado = 'Cerrado';
+
   bool isSolicitante(models.Usuario usuario) {
     return usuario.Rol.trim().toLowerCase() == 'solicitante';
   }
@@ -56,37 +64,42 @@ class TicketRulesService {
     return isCriticalCategory(categoria) ? 'Alta' : 'Media';
   }
 
-  Duration? parseSlaDuration(String rawValue) {
-    final text = rawValue.trim().toLowerCase();
+  Duration? parseGlobalMaxAttentionTime() {
+    final text = globalMaxAttentionTime.trim().toLowerCase();
     if (text.isEmpty) return null;
 
-    final hoursMatch = RegExp(r'^(\d+)\s*h').firstMatch(text);
+    final hoursMatch = RegExp(r'^(\d+)\s*h$').firstMatch(text);
     if (hoursMatch != null) {
       return Duration(hours: int.parse(hoursMatch.group(1)!));
     }
 
-    final minutesMatch = RegExp(r'^(\d+)\s*m').firstMatch(text);
+    final minutesMatch = RegExp(r'^(\d+)\s*m$').firstMatch(text);
     if (minutesMatch != null) {
       return Duration(minutes: int.parse(minutesMatch.group(1)!));
     }
 
+    final secondsMatch = RegExp(r'^(\d+)\s*s$').firstMatch(text);
+    if (secondsMatch != null) {
+      return Duration(seconds: int.parse(secondsMatch.group(1)!));
+    }
+
     final numeric = int.tryParse(text);
     if (numeric != null) {
-      return Duration(minutes: numeric);
+      return Duration(seconds: numeric);
     }
 
     return null;
   }
 
   DateTime? calculateSlaDeadline(models.Ticket ticket) {
-    final duration = parseSlaDuration(ticket.categoria.TiempoRespuesta);
+    final duration = parseGlobalMaxAttentionTime();
     if (duration == null) return null;
     return ticket.FechaCreacion.add(duration);
   }
 
   bool isTicketOverdue(models.Ticket ticket) {
-    final status = ticket.Estado.trim().toLowerCase();
-    if (status == 'cerrado' || status == 'vencido') {
+    final status = ticket.Estado.trim();
+    if (status == statusCerrado || status == statusVencido) {
       return false;
     }
 
@@ -97,24 +110,24 @@ class TicketRulesService {
   }
 
   bool canTransition(String currentStatus, String nextStatus) {
-    final current = currentStatus.trim().toLowerCase();
-    final next = nextStatus.trim().toLowerCase();
-
     const allowedTransitions = <String, Set<String>>{
-      'pendiente': {'asignado', 'vencido'},
-      'asignado': {'en proceso', 'vencido'},
-      'en proceso': {'resuelto', 'vencido'},
-      'resuelto': {'cerrado'},
-      'cerrado': {},
-      'vencido': {},
+      'Pendiente': {'Asignado'},
+      'Asignado': {'Vencido', 'Cerrado'},
+      'Vencido': {'Asignado', 'Cerrado'},
+      'Cerrado': {},
     };
 
-    return allowedTransitions[current]?.contains(next) ?? false;
+    return allowedTransitions[currentStatus.trim()]?.contains(nextStatus.trim()) ??
+        false;
   }
 
   bool requiresSolutionCommentForClose(models.Ticket ticket, String? comment) {
     final currentComment = ticket.comentario.Contenido.trim();
     final incomingComment = (comment ?? '').trim();
     return currentComment.isNotEmpty || incomingComment.isNotEmpty;
+  }
+
+  bool isClosedStatus(String status) {
+    return status.trim() == statusCerrado;
   }
 }

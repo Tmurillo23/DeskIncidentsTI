@@ -74,7 +74,7 @@ class _TecnicoPageState extends State<TecnicoPage> {
   }
 
   bool _isClosed(models.Ticket ticket) {
-    return ticket.Estado.trim().toLowerCase() == 'cerrado';
+    return ticket.Estado.trim() == 'Cerrado';
   }
 
   Future<void> _editarComentario(models.Ticket ticket) async {
@@ -218,32 +218,13 @@ class _TecnicoPageState extends State<TecnicoPage> {
         ),
       );
 
-      final status = actualizado.Estado.trim().toLowerCase();
+      final status = actualizado.Estado.trim();
 
-      if (status == 'pendiente') {
+      if (status == 'Pendiente') {
         actualizado = await _repository.changeTicketStatus(
           actor: actor,
           ticket: actualizado,
           nextStatus: 'Asignado',
-          solutionComment: comentario,
-        );
-      }
-
-      if (actualizado.Estado.trim().toLowerCase() == 'asignado') {
-        actualizado = await _repository.changeTicketStatus(
-          actor: actor,
-          ticket: actualizado,
-          nextStatus: 'En proceso',
-          solutionComment: comentario,
-        );
-      }
-
-      if (actualizado.Estado.trim().toLowerCase() == 'en proceso' ||
-          actualizado.Estado.trim().toLowerCase() == 'asignado') {
-        actualizado = await _repository.changeTicketStatus(
-          actor: actor,
-          ticket: actualizado,
-          nextStatus: 'Resuelto',
           solutionComment: comentario,
         );
       }
@@ -276,12 +257,12 @@ class _TecnicoPageState extends State<TecnicoPage> {
   }
 
   Color _prioridadColor(String prioridad) {
-    switch (prioridad.toLowerCase()) {
-      case 'alta':
+    switch (prioridad.trim()) {
+      case 'Alta':
         return Colors.red;
-      case 'media':
+      case 'Media':
         return Colors.orange;
-      case 'baja':
+      case 'Baja':
         return Colors.green;
       default:
         return Colors.grey;
@@ -289,19 +270,15 @@ class _TecnicoPageState extends State<TecnicoPage> {
   }
 
   Color _estadoColor(String estado) {
-    switch (estado.toLowerCase()) {
-      case 'abierto':
-        return Colors.blue;
-      case 'cerrado':
-        return Colors.green;
-      case 'pendiente':
+    switch (estado) {
+      case 'Pendiente':
         return Colors.orange;
-      case 'en progreso':
-        return Colors.purple;
-      case 'asignado':
+      case 'Asignado':
         return Colors.blueAccent;
-      case 'resuelto':
-        return Colors.teal;
+      case 'Vencido':
+        return Colors.red;
+      case 'Cerrado':
+        return Colors.green;
       default:
         return Colors.grey;
     }

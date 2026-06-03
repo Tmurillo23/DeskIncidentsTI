@@ -93,7 +93,7 @@ class AdminPage extends StatelessWidget {
                   child: AdminButton(
                     icon: Icons.engineering,
                     label: 'Agregar un técnico nuevo',
-                    color: const Color(0xFF7986CB),
+                    color: const Color(0xFF5C6BC0),
                     onTap: () {
                       showDialog(
                         context: context,
@@ -107,7 +107,7 @@ class AdminPage extends StatelessWidget {
                   child: AdminButton(
                     icon: Icons.people_outline,
                     label: 'Ver todos los técnicos',
-                    color: const Color(0xFF9FA8DA),
+                    color: const Color(0xFF5C6BC0),
                     onTap: () {
                       Navigator.push(
                         context,

@@ -241,12 +241,12 @@ class _CrearTicketDialogState extends State<CrearTicketDialog> {
   }
 
   Color _prioridadColor(String prioridad) {
-    switch (prioridad.toLowerCase()) {
-      case 'alta':
+    switch (prioridad.trim()) {
+      case 'Alta':
         return Colors.red;
-      case 'media':
+      case 'Media':
         return Colors.orange;
-      case 'baja':
+      case 'Baja':
         return Colors.green;
       default:
         return Colors.grey;
