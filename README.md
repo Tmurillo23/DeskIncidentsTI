@@ -42,9 +42,9 @@ Las organizaciones enfrentan dificultades para gestionar de manera eficiente los
 
 | Correo | Contraseña | Rol |
 |--------|-----------|-----|
-| `admin@gmail.com` | `123456*` | Administrador |
-| `tecnico1@gmail.com` | `123456*` | Técnico |
-| `usuario1@gmail.com` | `123456*` | Solicitante |
+| `admin@gmail.com` | `123456` | Administrador |
+| `tecnico1@gmail.com` | `123456` | Técnico |
+| `usuario1@gmail.com` | `contrasena` | Solicitante |
 
 ---
 
@@ -74,30 +74,6 @@ firestore/
 └── comments/       → Comentarios vinculados a un ticketId
 ```
 
-### Estructura de un documento `tickets/{id}`
-
-```json
-{
-  "estado": "pendiente",
-  "fechaCreacion": "Timestamp",
-  "prioridad": "alta",
-  "serialEquipo": "SN-00123",
-  "tecnicoId": "ref → technicians/{id}",
-  "categoriaId": "ref → categories/{id}",
-  "usuarioId": "ref → users/{id}",
-  "pendingSync": false
-}
-```
-
-### Estructura de un documento `categories/{id}`
-
-```json
-{
-  "nombre": "Hardware",
-  "descripcion": "Problemas con equipos físicos",
-  "tiempoRespuesta": "4h"
-}
-```
 
 > La sincronización offline-first se maneja con el campo `pendingSync: true/false` en cada entidad.
 
