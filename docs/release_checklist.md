@@ -19,24 +19,24 @@ Build evaluada: 1.0.0+1
 
 ## UI
 
-- [ ] Loading implementado.
-- [ ] Empty implementado.
-- [ ] Error implementado.
-- [ ] Data implementado.
-- [ ] Offline considerado.
-- [ ] Permission denied controlado.
+- [ X] Loading implementado.
+- [ X] Empty implementado.
+- [ X] Error implementado.
+- [ X] Data implementado.
+- [ X] Offline considerado.
+- [ X] Permission denied controlado.
 
 ## Código
 
-- [ ] Sin print() innecesarios.
-- [ ] Sin tokens en logs.
-- [ ] Sin contraseñas en logs.
-- [ ] Sin archivos .jks en Git.
-- [ ] Sin key.properties en Git.
+- [ X] Sin print() innecesarios.
+- [X ] Sin tokens en logs.
+- [X ] Sin contraseñas en logs.
+- [X ] Sin archivos .jks en Git.
+- [ X] Sin key.properties en Git.
 
 ## Entrega
 
-- [ ] README actualizado.
-- [ ] Matriz de pruebas completa.
-- [ ] Bugs conocidos documentados.
-- [ ] Declaración de RC escrita.
+- [ X] README actualizado.
+- [X ] Matriz de pruebas completa.
+- [ X] Bugs conocidos documentados.
+- [ X] Declaración de RC escrita.
