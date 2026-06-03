@@ -172,7 +172,7 @@ La app usa **Drift** (SQLite) para operaciones **offline-first**:
 |-------|--------------------|
 | `UsuarioModel` | id, nombre, documentoIdentidad, correo, rol, pendingSync |
 | `TecnicoModel` | id, nombre, documentoIdentidad, correo, password, pendingSync |
-| `CategoriaModel` | id, nombre, descripcion, tiempoRespuesta, pendingSync |
+| `CategoriaModel` | id, nombre, descripcion, pendingSync |
 | `TicketModel` | id, estado, fechaCreacion, prioridad, serialEquipo, tecnicoId, categoriaId, usuarioId, pendingSync |
 | `ComentarioModel` | id, contenido, ticketId, pendingSync |
 
